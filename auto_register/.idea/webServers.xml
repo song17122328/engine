@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="f0e6d869-8f44-404c-855a-a793ebe344d3" name="117.72.116.167:22">
+        <fileTransfer rootFolder="/root" accessType="SFTP" host="117.72.116.167" port="22" sshConfigId="9e95b08a-eb68-4b0f-b43e-ffc857846398" sshConfig="京东云">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

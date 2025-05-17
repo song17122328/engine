@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      target: dev  # 指定使用Dockerfile中的开发阶段构建
+      args:
+        PIP_EXTRA_INDEX_URL: "https://mirrors.aliyun.com/pypi/simple/"
+    ports:
+      - "117.72.116.167:5002:5000"  # 显式绑定到公网IP
+      - "5678:5678"  # 为PyCharm远程调试预留端口
+    networks:
+      - myapp_net
+    volumes:
+      - ./src:/app  # 启用代码实时同步
+      - ~/.local:/root/.local  # 持久化pip安装的包
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - DB_HOST=mysql_db
+      - DB_USER=app_user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - PYTHONUNBUFFERED=1  # 实时输出日志
+    depends_on:
+      - mysql_db
+    restart: unless-stopped
+    stdin_open: true  # 允许PyCharm附加交互式终端
+    tty: true
+
+  mysql_db:
+    image: mysql:8.0
+    networks:
+      - myapp_net
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=app_db
+      - MYSQL_USER=app_user
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql  # 初始化SQL（可选）
+    command: --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+
+networks:
+  myapp_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  cookies:

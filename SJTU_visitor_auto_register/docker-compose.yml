@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5001:5000"
+    networks:
+      - myapp_net
+    volumes:
+      - ./src:/app
+      - cookies:/app/campus_cookies
+    environment:
+      - DB_HOST=mysql_db
+      - DB_USER=app_user
+      - DB_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - mysql_db
+    restart: unless-stopped
+
+  mysql_db:
+    image: mysql:8.0
+    networks:
+      - myapp_net
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=app_db
+      - MYSQL_USER=app_user
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+
+networks:
+  myapp_net:
+    driver: bridge
+    name: myapp_isolated_network
+
+volumes:
+  mysql_data:
+    name: myapp_mysql_data
+  cookies:
+    name: myapp_cookie_store
