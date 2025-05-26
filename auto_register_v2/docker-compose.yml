@@ -1,0 +1,59 @@
+
+services:
+  web:
+    build: 
+      context: .
+      args:
+        TZ: Asia/Shanghai  # 构建时传递时区参数
+    ports:
+      - "5000:5000"
+    networks:
+      - flask_app
+    environment:
+#      - KDL_API_URL=https://dps.kdlapi.com/api/getdps/?secret_id=ojbzgxwopxm5mxqx8hlh&signature=otz9s5n326r25etg1a3kqihfke&num=1&pt=1&format=json&sep=1
+#      - KDL_USERNAME=d2531824458
+#      - KDL_PASSWORD=n01ze8an
+      - DATABASE_BASE_URI=mysql+pymysql://root:Yxs2025!@mysql:3306/
+      - DATABASE_URI=mysql+pymysql://root:Yxs2025!@mysql:3306/user_data
+      - DATABASE_URL=mysql+pymysql://root:Yxs2025!@mysql:3306/user_data
+      - TZ=Asia/Shanghai  # 容器运行时时区
+      - FLASK_CONFIG=TZ=Asia/Shanghai  # Flask应用时区
+    volumes:
+      - ./src/app/campus_cookies:/app/campus_cookies
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_container
+    ports:
+      - "3306:3306"
+    security_opt:
+      - seccomp:unconfined
+    networks:
+      - flask_app
+    environment:
+      - MYSQL_ROOT_PASSWORD=Yxs2025!
+#      - MYSQL_DATABASE=user_data
+      - TZ=Asia/Shanghai  # 容器系统时区
+      - MYSQL_DEFAULT_TIME_ZONE=+08:00  # MySQL默认时区
+    command: 
+      - --default-time-zone=+08:00  # 强制MySQL使用东八区
+      - --log_timestamps=SYSTEM  # 日志时间戳对齐系统时区
+    volumes:
+      - mysql_data:/var/lib/mysql  # 修改为简单名称
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pYxs2025!"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  flask_app:
+    name: flask_app
+
+volumes:
+  mysql_data:  # 使用简单名称，避免自动前缀
+    name: flask_mysql_data  # 显式指定全局唯一名称
+  

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上海交通大学访客登记自动化工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <h1>上海交通大学访客登记自动化工具</h1>
+    <p>系统将在每天早上8点提交上午入校申请，在13点自动提交下午入校申请</p>
+    <p>请填写以下信息：</p>
+
+    <form id="submitForm">
+        <div class="form-group">
+            <label for="campus">校区:</label>
+            <select id="campus" name="campus">
+                <option value="闵行校区">闵行校区</option>
+                <option value="徐汇校区">徐汇校区</option>
+                 <option value="七宝校区">七宝校区</option>
+            </select>
+        </div>
+
+<!--        <div class="form-group">-->
+<!--            <label for="time">时间:</label>-->
+<!--&lt;!&ndash;            8：00-13：    00 对应下面输入框时间value的1，13:00-20:00对应value为2，我应当让用户选择早上或下午，而提交的表单信息为1或2&ndash;&gt;-->
+<!--            <select id="time" name="time">-->
+<!--                <option value="1">早上8:00-13:00</option>-->
+<!--                <option value="2">下午13:00-20:00</option>-->
+<!--            </select>-->
+<!--        </div>-->
+
+        <div class="form-group">
+            <label for="xm">姓名:</label>
+            <input type="text" id="xm" name="xm" required>
+        </div>
+
+        <div class="form-group">
+            <label for="zjhm">身份证号:</label>
+            <input type="text" id="zjhm" name="zjhm" required>
+        </div>
+
+        <div class="form-group">
+            <label for="phone">手机号:</label>
+            <input type="tel" id="phone" name="phone" required>
+        </div>
+
+        <button type="submit">提交</button>
+    </form>
+
+    <div id="status"></div>
+
+    <script>
+        document.getElementById('submitForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                campus: document.getElementById('campus').value,
+                xm: document.getElementById('xm').value,
+                zjhm: document.getElementById('zjhm').value,
+                phone: document.getElementById('phone').value
+            };
+
+            try {
+                const response = await fetch('http://47.117.43.3:5000/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                const statusDiv = document.getElementById('status');
+                console.log(result)
+                if (result.success === true) {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = `
+                        <p>${formData.xm},提交成功！</p>
+<!--                        下面是一个p标签，如果用户提交的time为1，则p标签内容：您提交了上午的入校申请，如果time标签为2，则p为：您提交了下午的入校申请-->
+<!--        <p>您提交了${formData.time === '1' ? '上午' : '下午'}的入校申请，系统将在每天早上8点自动提交您的信息</p>-->
+                        <p>校区: ${formData.campus}</p>
+                        <p>测试提交结果: ${result.success_div}</p>
+<!--                        显示时间-->
+                        <p>提交时间: ${result.timestamp}</p>
+                    `;
+                } else {
+                    statusDiv.className = 'error';
+                    statusDiv.textContent = `错误: ${result.message}`;
+                }
+            } catch (error) {
+                document.getElementById('status').className = 'error';
+                document.getElementById('status').textContent = '网络错误，请稍后再试';
+                console.error('Error:', error);
+
+            }
+        });
+    </script>
+</body>
+</html>

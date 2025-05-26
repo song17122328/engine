@@ -1,0 +1,38 @@
+from datetime import datetime
+
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from ..services.submission_service import execute_scheduled_submissions
+
+
+def create_scheduler(app):
+    scheduler = BackgroundScheduler()
+
+    def morning_job():
+        with app.app_context():
+            print(f"[{datetime.now()}] 执行早上提交任务")
+            print(execute_scheduled_submissions())
+
+    def afternoon_job():
+        with app.app_context():
+            print(f"[{datetime.now()}] 执行下午提交任务")
+            print(execute_scheduled_submissions())
+
+    # 添加定时任务
+    scheduler.add_job(
+        morning_job,
+        'cron',
+        hour=8,
+        minute=0,
+        id='morning_submission'
+    )
+
+    scheduler.add_job(
+        afternoon_job,
+        'cron',
+        hour=12,
+        minute=30,
+        id='afternoon_submission'
+    )
+
+    return scheduler
