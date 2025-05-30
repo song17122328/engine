@@ -628,7 +628,7 @@ This delves into the lower-level aspects of CUDA programming, which is typically
      - `cudaFree(void* devPtr)`: Frees memory previously allocated with `cudaMalloc`. [[15\]](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
         PyTorch and CuPy handle these operations automatically when you move tensors to/from the GPU (e.g., `tensor.to('cuda')` or `cp.asarray()`), using a caching allocator for efficiency. [[16\]](https://www.codecademy.com/resources/docs/pytorch/gpu-acceleration-with-cuda/memory-management)[[17\]](https://pytorch.org/docs/stable/notes/cuda.html)
 
-## 3. Distributed communication library (Python implementation)
+### 3. Distributed communication library (Python implementation)
 
 **1. Distributed communication library (Python implementation)**
 
