@@ -41,27 +41,35 @@ def get_cookies_for_campus(campus, times):
         )
         time.sleep(8)
 
-        iknow_checkbox = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "iknow"))
-        )
-        ActionChains(driver).move_to_element(iknow_checkbox).click().perform()
-        print("已点击 iknow 复选框")
-        time_radio = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, times))
-        )
-        time_radio.click()
-        print(f"已选择时间: {times}")
+        try:
+            iknow_checkbox = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "iknow"))
+            )
+            ActionChains(driver).move_to_element(iknow_checkbox).click().perform()
+            print("已点击 iknow 复选框")
 
-        cookies = {c['name']: c['value'] for c in driver.get_cookies()}
-        if not is_valid_cookie(cookies):
-            raise ValueError("获取的Cookie缺少关键字段")
+            time_radio = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, times))
+            )
+            time_radio.click()
+            print(f"已选择时间: {times}")
 
-        print(f"{datetime.now()}: 获取到的Cookies:", cookies)
-        save_campus_cookies(campus, cookies)
-        return cookies
+            cookies = {c['name']: c['value'] for c in driver.get_cookies()}
+            if not is_valid_cookie(cookies):
+                raise ValueError("获取的Cookie缺少关键字段")
+
+            print(f"{datetime.now()}: 获取到的Cookies:", cookies)
+            save_campus_cookies(campus, cookies)
+            return {"status": "success", "message": "已成功获取cookie", "cookies": cookies}
+
+        except Exception as e:
+            if "NoSuchElementException" in str(e) or "TimeoutException" in str(e):
+                return {"status": "fail", "message": "访客人数已满，官方登记系统已关闭，请等待下一次开始","cookies": None}
+            else:
+                raise e
 
     except Exception as e:
-        print(e)
+        return {"status": "error", "message": f"访问校区页面获取cookies时发生错误: {str(e)}", "cookies": None}
     finally:
         driver.quit()
 

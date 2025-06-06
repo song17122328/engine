@@ -4,7 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7f06651f-e4cd-4ce3-a131-d5233e44b714" name="Changes" comment="" />
+    <list default="true" id="7f06651f-e4cd-4ce3-a131-d5233e44b714" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/services/cookie_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/services/cookie_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/services/submission_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/services/submission_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/tasks/scheduler" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/tasks/scheduler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/tasks/scheduler.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -41,7 +48,7 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Engineer/MyFlaskProject/src/app/tasks&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Engineer/auto_register_v2&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -186,6 +193,8 @@
       <workItem from="1747898065276" duration="38411000" />
       <workItem from="1748087730064" duration="18449000" />
       <workItem from="1748166568253" duration="12305000" />
+      <workItem from="1748493699001" duration="145000" />
+      <workItem from="1748494170433" duration="3700000" />
     </task>
     <servers />
   </component>

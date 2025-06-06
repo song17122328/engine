@@ -55,7 +55,18 @@ def submit_to_system(user, campus):
 
         if start_time <= datetime.now().time() <= end_time:
             print(f"{datetime.now()}: 正在获取新Cookie...")
-            cookies = get_cookies_for_campus(campus, "time" + form_data['time'])
+            result = get_cookies_for_campus(campus, "time" + form_data['time'])
+            if result['status'] == 'success':
+                cookies = result['cookies']
+            else:
+                return {
+                    "success": True,
+                    "message": f"{campus}校区提交成功",
+                    "time_slot": time_slot,
+                    "timestamp": datetime.now(),  # 确保包含timestamp
+                    "success_div": result['message']
+                }
+
         else:
             print("时间不对，不去获取cookies")
 
@@ -86,13 +97,12 @@ def submit_to_system(user, campus):
             success_div = tree.xpath('//html/body/div[1]/div[2]/text()')[0]
             # print(f"[{datetime.now()}] 提交成功！响应内容:", success_div)
             if success_div == "登记失败：请通过二维码或公众号进入登记":
-
                 if start_time <= datetime.now().time() <= end_time:
                     get_cookies_for_campus(campus, "time" + form_data['time'])
                     success_div = "cookies过期，已获取新Cookie，请并重新提交"
                 else:
                     success_div = "cookies过期，不在获取cookies时间段，请等待8:00-20:00再尝试提交"
-            if success_div == "登记失败：您提交登记次数过多":
+            elif success_div == "登记失败：您提交登记次数过多":
                 success_div = "该用户提交登记次数过多，已被官方系统拉黑"
             return {
                 "success": True,

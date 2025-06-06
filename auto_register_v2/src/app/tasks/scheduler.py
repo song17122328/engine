@@ -54,7 +54,7 @@ def run_scheduler():
 
     scheduler = BackgroundScheduler()
     # 修正：传递函数引用而非调用结果
-    scheduler.add_job(job_wrapper, 'cron', hour=8, minute=0, id='morning_submission')
+    scheduler.add_job(job_wrapper, 'cron', hour=7, minute=0, id='morning_submission')
     scheduler.add_job(job_wrapper, 'cron', hour=13, minute=0,id='afternoon_submission')
 
     scheduler.start()

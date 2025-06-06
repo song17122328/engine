@@ -643,13 +643,6 @@ This phase moves beyond single-machine multiprocessing to actual distributed com
    To use `torch.distributed`, you first need to initialize the process group. This involves setting environment variables like `MASTER_ADDR`, `MASTER_PORT`, `RANK`, and `WORLD_SIZE`.
 
   ```python
-  # This script needs to be run by multiple processes, e.g., using torch.multiprocessing.spawn
-  # or a launcher like torchrun (recommended for multi-node).
-  
-  # Example setup for single-node multi-process (for demonstration):
-  # import os
-  # os.environ['MASTER_ADDR'] = 'localhost'
-  # os.environ['MASTER_PORT'] = '29500' # Choose a free port
   
   import torch
   import torch.distributed as dist
@@ -660,19 +653,22 @@ This phase moves beyond single-machine multiprocessing to actual distributed com
       """Worker function for distributed communication."""
       # Initialize the process group
       # backend='gloo' is good for CPU, 'nccl' for GPU
-      dist.init_process_group("gloo", rank=rank, world_size=world_size) [3]
-      print(f"Rank {rank}/{world_size}: Process group initialized.")
+  
+      device = torch.device(f'cuda:{rank % torch.cuda.device_count()}')
+      torch.cuda.set_device(device) # Set the current CUDA device for this process
+      dist.init_process_group("nccl", rank=rank, world_size=world_size)
+      print(f"Rank {rank}/{world_size}: Process group initialized on {device}.")
   
       # --- Point-to-point communication (send/recv) ---
       if rank == 0:
           # Rank 0 sends a tensor to Rank 1
-          data_to_send = torch.tensor([10.0, 20.0])
+          data_to_send = torch.tensor([10.0, 20.0]).to(device)  # Ensure tensor is on GPU
           print(f"Rank {rank}: Sending {data_to_send} to Rank 1")
-          dist.send(tensor=data_to_send, dst=1) [1, 3, 34, 39, 43]
+          dist.send(tensor=data_to_send, dst=1) 
       elif rank == 1:
           # Rank 1 receives a tensor from Rank 0
-          data_received = torch.zeros(2) # Tensor to receive into
-          dist.recv(tensor=data_received, src=0) [1, 3, 34, 39, 43]
+          data_received = torch.zeros(2).to(device) # Tensor to receive into
+          dist.recv(tensor=data_received, src=0) 
           print(f"Rank {rank}: Received {data_received} from Rank 0")
   
       dist.barrier() # Synchronize all processes before next operation
@@ -680,12 +676,12 @@ This phase moves beyond single-machine multiprocessing to actual distributed com
       # --- Collective communication (broadcast) ---
       # Rank 0 broadcasts a tensor to all other ranks
       if rank == 0:
-          data_to_broadcast = torch.tensor([100.0, 200.0, 300.0])
+          data_to_broadcast = torch.tensor([100.0, 200.0, 300.0]).to(device)  # Ensure tensor is on GPU
           print(f"Rank {rank}: Broadcasting {data_to_broadcast}")
       else:
-          data_to_broadcast = torch.zeros(3) # Tensor to receive into
+          data_to_broadcast = torch.zeros(3).to(device) # Tensor to receive broadcasted data
   
-      dist.broadcast(tensor=data_to_broadcast, src=0) [3, 42]
+      dist.broadcast(tensor=data_to_broadcast, src=0)
       print(f"Rank {rank}: Received broadcasted data: {data_to_broadcast}")
   
       dist.barrier()
@@ -693,9 +689,9 @@ This phase moves beyond single-machine multiprocessing to actual distributed com
       # --- Collective communication (all_reduce) ---
       # Each rank has a tensor, and all_reduce sums them up across all ranks
       # and makes the sum available on all ranks.
-      my_tensor = torch.tensor([float(rank + 1)]) # Each rank has a unique value
+      my_tensor = torch.tensor([float(rank + 1)]).to(device) # Each rank has a unique value
       print(f"Rank {rank}: My tensor before all_reduce: {my_tensor}")
-      dist.all_reduce(my_tensor, op=dist.ReduceOp.SUM) [3, 35, 36, 42, 47]
+      dist.all_reduce(my_tensor, op=dist.ReduceOp.SUM)
       print(f"Rank {rank}: My tensor after all_reduce (SUM): {my_tensor}")
   
       dist.destroy_process_group()
@@ -714,9 +710,9 @@ This phase moves beyond single-machine multiprocessing to actual distributed com
   if __name__ == "__main__":
       main()
   ```
-
+  
   *Explanation:*
-
+  
   - `dist.init_process_group()` initializes the communication backend (`gloo` for CPU, `nccl` for GPU). `rank` is the unique ID of the current process, and `world_size` is the total number of processes. [[18\]](https://docs.pytorch.org/tutorials/intermediate/dist_tuto.html)[[19\]](https://www.youtube.com/watch?v=reA-ldsTD4Q)
   - `dist.send(tensor, dst)` sends a tensor to a specific destination rank. [[21\]](https://lambda.ai/blog/multi-node-pytorch-distributed-training-guide)[[22\]](https://github.com/kubeflow/pytorch-operator/blob/master/examples/smoke-dist/dist_sendrecv.py)
   - `dist.recv(tensor, src)` receives a tensor from a specific source rank. [[21\]](https://lambda.ai/blog/multi-node-pytorch-distributed-training-guide)[[22\]](https://github.com/kubeflow/pytorch-operator/blob/master/examples/smoke-dist/dist_sendrecv.py)
@@ -724,7 +720,7 @@ This phase moves beyond single-machine multiprocessing to actual distributed com
   - `dist.all_reduce(tensor, op)` performs a reduction operation (e.g., sum, average) on tensors across all processes, and the result is available on all processes. [[18\]](https://docs.pytorch.org/tutorials/intermediate/dist_tuto.html)[[24\]](https://discuss.ray.io/t/how-to-get-the-global-loss-to-train-with-pytorch/15401)
   - `dist.barrier()` synchronizes all processes, ensuring all processes reach this point before proceeding.
   - `mp.spawn` is a convenient way to launch multiple processes for distributed training on a single machine. For multi-node setups, `torchrun` (or `mpirun`) is typically used. [[21\]](https://lambda.ai/blog/multi-node-pytorch-distributed-training-guide)
-
+  
 - **Supports cross-device GPU communication (using NCCL at the bottom layer):**
    When `backend='nccl'` is used, `torch.distributed` leverages NVIDIA's Collective Communications Library (NCCL) for highly optimized GPU-to-GPU communication. NCCL is designed for high-throughput, low-latency communication between GPUs, especially for operations like `all_reduce` which are critical in distributed deep learning. [[19\]](https://www.youtube.com/watch?v=reA-ldsTD4Q)[[23\]](https://sagemaker.readthedocs.io/en/v2.66.0/api/training/sdp_versions/v1.0.0/smd_data_parallel_pytorch.html) This means data does not need to be transferred to CPU memory before being sent to another GPU.
 
@@ -743,111 +739,113 @@ We'll adapt the matrix multiplication pipeline to use `torch.distributed`, speci
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
-import numpy as np
 import os
+import numpy as np
 import argparse
 import time
 
-def matrix_multiplier_dist(rank, world_size, backend, input_q, output_q):
+def matrix_multiplier_dist(rank,world_size,backend,input_q,output_q):
     """Distributed process that performs matrix multiplication."""
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '29500' # Ensure this is consistent or managed by launcher
 
-    # Initialize process group
-    dist.init_process_group(backend, rank=rank, world_size=world_size)
-    print(f"Rank {rank}: Process group initialized with backend '{backend}'.")
+    # Initialize the process group
+    dist.init_process_group(backend,rank=rank,world_size=world_size)
+    print(f"Rank {rank}: Process group initialized with backend {backend}")
 
-    device = torch.device(f"cuda:{rank}" if backend == "nccl" and torch.cuda.is_available() else "cpu")
+    if backend == 'nccl' and torch.cuda.is_available():
+        device = torch.device(f'cuda:{rank % torch.cuda.device_count()}')
+        torch.cuda.set_device(device)  # Set the current CUDA device for this process
+    else:
+        device = torch.device("cpu")
     print(f"Rank {rank}: Using device {device}")
 
-    if rank == 0: # This process will act as the "multiplier"
-        print(f"Rank {rank}: Acting as Matrix Multiplier.")
+    if rank == 0 : 
+        print(f"Rank {rank}: Acting as Matrix Multiplier")
         while True:
             # Receive matrices from "input_q" (conceptually, could be from another process)
-            # For simplicity, we'll simulate input directly or from a queue if needed.
+            # For simplicity, we'll simulate input directly or from queue if needed.
             # In a real DDP scenario, data loading would be handled by a DistributedSampler.
-            matrices_data = input_q.get() # This queue is for inter-process communication on CPU
+            matrices_data = input_q.get() # This queue is for inter-process communication on GPU
             if matrices_data is None:
                 print(f"Rank {rank}: Received stop signal.")
                 break
 
-            matrix_a_np, matrix_b_np = matrices_data
+            matrix_a_np,matrix_b_np = matrices_data
             matrix_a = torch.from_numpy(matrix_a_np).to(device)
             matrix_b = torch.from_numpy(matrix_b_np).to(device)
 
             print(f"Rank {rank}: Multiplying matrices on {device} of shapes {matrix_a.shape} and {matrix_b.shape}")
-            result = torch.matmul(matrix_a, matrix_b)
+            result = torch.matmul(matrix_a,matrix_b)
 
-            # Send the result to Rank 1 (consumer)
+            #Send the result to Rank 1 (consumer)
             print(f"Rank {rank}: Sending result to Rank 1.")
-            dist.send(tensor=result.cpu(), dst=1) # Send CPU tensor to avoid cross-GPU direct send for simplicity here
+            dist.send(tensor=result, dst=1)  # Send CPU tensor to avoid cross-GPU direct send for simplicity here
 
-        dist.send(tensor=torch.tensor([-1.0]), dst=1) # Send a sentinel to consumer
-    elif rank == 1: # This process will act as the "consumer"
+        stop_signal_tensor = torch.full((100, 100), -1.0, device=device)
+        dist.send(stop_signal_tensor, dst = 1) # Send a sentinel to consumer
+        print(f"Rank {rank}: Sent stop signal to Rank 1.") 
+    elif rank == 1:
         print(f"Rank {rank}: Acting as Result Consumer.")
         while True:
-            received_tensor = torch.zeros(100, 100, device=device) # Pre-allocate for expected size
-            # A more robust solution would involve sending size first, or using a known size.
-            # For this example, we assume results are 100x100 for the first few iterations.
+            received_tensor = torch.zeros(100,100,device=device)  # Pre-allocate for expected size
+            #For this example, we assume the result are 100x100 for the first few iterations.
 
-            dist.recv(tensor=received_tensor, src=0)
-            if received_tensor.item() == -1.0: # Check for sentinel
+            dist.recv(tensor = received_tensor ,src = 0 )
+            if torch.all(received_tensor == -1.0): # check for sentinel value
                 print(f"Rank {rank}: Received stop signal.")
                 break
-
             print(f"Rank {rank}: Received result matrix on {device} of shape {received_tensor.shape}")
-            print(f"Rank {rank}: First 3x3 block of result:\n{received_tensor[:3,:3].cpu()}")
-
+            print(f"Rank {rank}: First 3 X 3 block of result:\n {received_tensor[:3,:3].cpu()}")      
+        
+    dist.barrier() # Ensure all processes reach here before destroying group
     dist.destroy_process_group()
     print(f"Rank {rank}: Process group destroyed.")
 
 def main_launcher(backend):
     world_size = 2 # Fixed for this example
-    input_q_cpu = mp.Queue() # Queue to send initial data from main to rank 0
+    input_q_cpu = mp.Queue() # Queue to send initial data from CPU to rank0
     output_q_cpu = mp.Queue() # Not directly used in this DDP example, but kept for consistency
 
     # Start the processes using torch.multiprocessing.spawn
-    # In a real multi-node setup, you'd use torchrun or mpirun
+    # In a real multi-node setup, you'd use a torchrun or mpirun
     processes = []
     for rank in range(world_size):
-        p = mp.Process(target=matrix_multiplier_dist, args=(rank, world_size, backend, input_q_cpu, output_q_cpu))
+        p = mp.Process(target = matrix_multiplier_dist, args = (rank, world_size,backend,input_q_cpu, output_q_cpu))
         p.start()
         processes.append(p)
 
     # Main process (which is separate from the spawned distributed processes)
     # This simulates data generation or loading
-    if world_size > 0: # Only generate data if there's a rank 0 to receive it
+    if world_size >0 : # Only generate data if there's a rank 0 to receive it
         for i in range(3):
             size = 100 # Fixed size for simplicity in this example
-            mat_a = np.random.rand(size, size).astype(np.float32)
-            mat_b = np.random.rand(size, size).astype(np.float32)
-            print(f"Main Launcher: Putting matrices (size {size}) into input queue for Rank 0.")
+            mat_a =np.random.rand(size,size).astype(np.float32)
+            mat_b = np.random.rand(size,size).astype(np.float32)
+            print(f"Main Process: Sending matrices of shape {mat_a.shape} and {mat_b.shape} to Rank 0.")
             input_q_cpu.put((mat_a, mat_b))
             time.sleep(0.1)
 
-        input_q_cpu.put(None) # Signal Rank 0 to stop
+        input_q_cpu.put(None)  # Send a stop signal to Rank 0
 
     for p in processes:
         p.join()
-    print("Main Launcher: All distributed processes finished.")
-
+    print("Main Lancher: All processes have completed.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--backend", type=str, default="gloo", choices=['gloo', 'nccl'],
-                        help="Backend for distributed communication (gloo for CPU, nccl for GPU).")
-    args = parser.parse_args()
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '29502'  # Use a random port for robustness
+    try:
+        mp.set_start_method('spawn', force=True)
+    except RuntimeError:
+        pass # Already set, ignore
 
-    # If using nccl, ensure CUDA is available
-    if args.backend == "nccl" and not torch.cuda.is_available():
-        print("Warning: NCCL backend requested but CUDA is not available. Falling back to Gloo.")
-        args.backend = "gloo"
+    if torch.cuda.is_available():
+        chosen_backend = "nccl"
+        print("CUDA is available. Using NCCL backend.")
+    else:
+        chosen_backend = "gloo"
+        print("CUDA is not available. Using Gloo backend.")
 
-    # This example uses mp.spawn for simplicity of demonstration within one script.
-    # For actual multi-GPU/multi-node deployments, `torch.distributed.launch` or `torchrun`
-    # is the standard way to set up the environment variables (MASTER_ADDR, MASTER_PORT, RANK, WORLD_SIZE)
-    # and launch the processes.
-    main_launcher(args.backend)
+    main_launcher(chosen_backend)
 ```
 
 *Explanation:*
@@ -862,6 +860,8 @@ if __name__ == "__main__":
 **Alternative solution `mpi4py`:**
 
 `mpi4py` provides Python bindings for the Message Passing Interface (MPI) standard. MPI is a widely used standard for parallel programming on distributed-memory systems. `mpi4py` is suitable when you need more low-level control over communication patterns or when integrating with existing MPI-based HPC (High-Performance Computing) environments. [[25\]](https://education.molssi.org/parallel-programming/03-distributed-examples-mpi4py.html)[[26\]](https://research.computing.yale.edu/sites/default/files/files/mpi4py.pdf)
+
+`mpi4py` 为消息传递接口（MPI）标准提供了 Python 绑定。MPI 是分布式内存系统上广泛使用的并行编程标准。当你需要对通信模式进行更底层的控制，或者与现有的基于 MPI 的高性能计算（HPC）环境集成时，`mpi4py` 非常适用。
 
 ```python
 # Save this as, e.g., mpi_example.py
@@ -921,12 +921,12 @@ print(f"Rank {rank}: My value: {my_value}, Sum of all ranks: {sum_all_ranks}")
 
 *Explanation:*
 
-- `MPI.COMM_WORLD` is the default communicator that includes all processes. [[25\]](https://education.molssi.org/parallel-programming/03-distributed-examples-mpi4py.html)[[26\]](https://research.computing.yale.edu/sites/default/files/files/mpi4py.pdf)
-- `comm.Get_rank()` and `comm.Get_size()` retrieve the unique ID of the current process and the total number of processes, respectively. [[25\]](https://education.molssi.org/parallel-programming/03-distributed-examples-mpi4py.html)[[26\]](https://research.computing.yale.edu/sites/default/files/files/mpi4py.pdf)
-- `comm.send()` and `comm.recv()` are used for point-to-point communication of Python objects (which are pickled). [[26\]](https://research.computing.yale.edu/sites/default/files/files/mpi4py.pdf)[[27\]](https://pythonprogramming.net/sending-receiving-data-messages-mpi4py/)
-- `comm.bcast()` broadcasts an object from the `root` process to all other processes. [[28\]](https://mpi4py.readthedocs.io/en/4.0.3/tutorial.html)
-- `comm.allreduce()` performs a reduction operation (like `MPI.SUM`) on values from all processes, with the result available on all processes. [[29\]](https://docs.ycrc.yale.edu/clusters-at-yale/guides/mpi4py/)
-- For better performance with NumPy arrays, `mpi4py` also provides uppercase `Send`/`Recv` methods that use MPI's buffer protocol, avoiding Python's pickling overhead. [[28\]](https://mpi4py.readthedocs.io/en/4.0.3/tutorial.html)[[30\]](https://www.kth.se/blogs/pdc/2019/11/parallel-programming-in-python-mpi4py-part-2/)
+- `MPI.COMM_WORLD`是默认的通信器，包含所有进程。
+- `comm.Get_rank()`和`comm.Get_size()`分别用于获取当前进程的唯一 ID 和进程总数。[25][26]
+- `comm.send()`和`comm.recv()`用于 Python 对象（会被序列化）的点对点通信。[26][27]
+- `comm.bcast()`从根进程向所有其他进程广播一个对象。[28]
+- `comm.allreduce()`对所有进程中的值执行归约操作（如`MPI.SUM`），所有进程都能获取结果。[29]
+- 为了在 NumPy 数组上获得更好的性能，`mpi4py`还提供了大写的`Send/Recv`方法，这些方法使用 MPI 的缓冲区协议，避免了 Python 序列化的开销
 
 This comprehensive tutorial covers the core concepts and practical implementations for Python distributed systems and CUDA programming, moving from single-machine simulations to multi-process/multi-GPU distributed environments.
 

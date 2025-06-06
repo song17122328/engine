@@ -1,4 +1,4 @@
-# 使用docker开发服务器项目指南
+# 配置Windows下WSL+docker环境
 
 ### ▌ 为什么要使用docker开发
 
@@ -28,6 +28,14 @@ WSL2 是 windows subsystem for Linux version2 ，替代了以前的 Hyper-V，�
 ![image-20250518112507283](https://cdn.jsdelivr.net/gh/song17122328/MyPic@main/img/image-20250518112507283.png)
 
 如果WSL Setting安装好了但是没有 Ubuntu ，则在powershell 里面执行 `wsl --install` 自动安装Ubuntu
+
+然后执行下面命令，设置wsl的默认为`Ubuntu`
+
+```bash
+wsl --set-default Ubuntu
+```
+
+![image-20250531105547140](https://cdn.jsdelivr.net/gh/song17122328/MyPic@main/img/image-20250531105547140.png)
 
 2）安装decker desktop：从官网上下载docker desktop https://www.docker.com/products/docker-desktop/
 
